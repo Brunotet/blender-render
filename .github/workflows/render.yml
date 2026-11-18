@@ -62,6 +62,8 @@ jobs:
           --step ${{ inputs.step }} --out frames
           --width ${{ inputs.width }} --height ${{ inputs.height }}
           --samples ${{ inputs.samples }} --fps ${{ inputs.fps }}
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Encode segment
         run: |
           rate=$(python -c "print(${{ inputs.fps }}/${{ inputs.step }})")
@@ -84,6 +86,8 @@ jobs:
           pattern: seg-*
           merge-multiple: true
           path: segments
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Verify and join
         run: |
           expected=${{ needs.plan.outputs.count }}
