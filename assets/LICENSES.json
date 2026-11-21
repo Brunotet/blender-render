@@ -1,0 +1,8 @@
+{
+  "policy": "Monetized channel: only assets that need NO attribution. Allowed licenses: CC0-1.0, Unlicense, Public-Domain, Original (made in this repo).",
+  "allowed": ["CC0-1.0", "Unlicense", "Public-Domain", "Original"],
+  "assets": [
+    {"path": "scenes/parkour.py", "license": "Original", "source": "written for this repo"},
+    {"path": "scenes/demo.py", "license": "Original", "source": "written for this repo"}
+  ]
+}
