@@ -39,8 +39,22 @@ jobs:
               f.write("matrix=" + json.dumps({"include": inc}) + "\n")
               f.write(f"count={len(inc)}\n")
 
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: License check
+        run: python check_licenses.py
+      - name: Quality gate (hard-fails the whole run)
+        run: python qa.py --scene "${{ inputs.scene }}" --fps ${{ inputs.fps }}
+
   render:
-    needs: plan
+    needs: [plan, qa]
     runs-on: ubuntu-latest
     timeout-minutes: 340
     strategy:
