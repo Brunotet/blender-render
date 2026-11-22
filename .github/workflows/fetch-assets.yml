@@ -1,0 +1,54 @@
+name: fetch-assets
+
+# Downloads a CC0 asset pack on the runner (open internet), unpacks it into assets/<name>/,
+# registers every file in assets/LICENSES.json and commits. Hard-fails on anything unexpected.
+on:
+  workflow_dispatch:
+    inputs:
+      url:     { description: "Direct zip URL", default: "https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip" }
+      name:    { description: "Folder name under assets/", default: "ual" }
+      license: { description: "License (must be CC0-1.0 / Unlicense / Public-Domain)", default: "CC0-1.0" }
+      source:  { description: "Source page URL", default: "https://quaternius.com/packs/universalanimationlibrary.html" }
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and unpack
+        env:
+          URL: ${{ inputs.url }}
+          NAME: ${{ inputs.name }}
+          LIC: ${{ inputs.license }}
+          SRC: ${{ inputs.source }}
+        run: |
+          set -euo pipefail
+          case "$LIC" in CC0-1.0|Unlicense|Public-Domain) ;; *) echo "FATAL: license $LIC needs attribution"; exit 1;; esac
+          mkdir -p dl "assets/$NAME"
+          curl -fL --retry 3 -o dl/pack.zip "$URL"
+          file dl/pack.zip | grep -qi 'zip archive' || { echo "FATAL: not a zip"; head -c 300 dl/pack.zip; exit 1; }
+          unzip -q dl/pack.zip -d "assets/$NAME"
+          find "assets/$NAME" -type f ! -name 'MANIFEST.txt' | sort > dl/files.txt
+          test -s dl/files.txt
+          { echo "source: $SRC"; echo "license: $LIC"; echo "url: $URL"; echo; (cd "assets/$NAME" && find . -type f ! -name MANIFEST.txt -exec ls -l {} + | awk '{print $5, $9}' | sort -k2); } > "assets/$NAME/MANIFEST.txt"
+          python3 - <<'PY'
+          import json, os
+          m = json.load(open('assets/LICENSES.json'))
+          have = {a['path'] for a in m['assets']}
+          for p in open('dl/files.txt').read().split('\n'):
+              if p and p not in have:
+                  m['assets'].append({'path': p, 'license': os.environ['LIC'], 'source': os.environ['SRC']})
+          m['assets'].append({'path': 'assets/%s/MANIFEST.txt' % os.environ['NAME'], 'license': 'Original', 'source': 'generated'}) if 'assets/%s/MANIFEST.txt' % os.environ['NAME'] not in have else None
+          json.dump(m, open('assets/LICENSES.json', 'w'), indent=1)
+          PY
+          python3 check_licenses.py
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add assets
+          git commit -m "Add CC0 pack ${{ inputs.name }}"
+          git push
