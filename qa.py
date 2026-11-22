@@ -26,15 +26,40 @@ def main():
     sc = bpy.context.scene; cam = sc.camera
     J = {o.name + str(i): o for i, o in enumerate(bpy.data.objects) if o.type == "EMPTY" and o.name.split(".")[0] in
          ("root", "torso", "head", "shoulder", "elbow", "hip", "knee", "ankle")}
+    arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
+    BONES = ("DEF-hips", "DEF-head", "DEF-foot.L", "DEF-foot.R", "DEF-hand.L", "DEF-hand.R")
     ankles = [o for k, o in J.items() if k.startswith("ankle")]
     key = [o for k, o in J.items() if k.startswith(("head", "ankle", "elbow"))]
-    errs, prev, prev2, prevrot, prevank = [], {}, {}, {}, {}
+    errs, warns, prev, prev2, prevrot, prevank = [], [], {}, {}, {}, {}
+    bounds = set(sc.get("clip_boundaries", []))       # frames where a clip starts/ends (hard cut, known pose pop)
     dt = 1.0 / a.fps
     sx, sy = sc.render.resolution_x, sc.render.resolution_y
     from bpy_extras.object_utils import world_to_camera_view
     for f in range(sc.frame_start, sc.frame_end + 1):
         sc.frame_set(f)
         bpy.context.view_layer.update()
+        if arms and not J:                       # armature scenes (director): bone-based checks
+            vis = False
+            for ai, ao in enumerate(arms):
+                for bn in BONES:
+                    pb = ao.pose.bones[bn]
+                    p = ao.matrix_world @ pb.head; k = f"{ai}:{bn}"
+                    if any(math.isnan(v) for v in p):
+                        errs.append((f, k, "NaN")); continue
+                    if k in prev:
+                        v = (p - prev[k]).length / dt
+                        if v > LIM["max_speed"]: errs.append((f, k, f"speed {v:.1f} m/s"))
+                        if k in prev2 and (p - 2 * prev[k] + prev2[k]).length / dt ** 2 > LIM["max_accel"]:
+                            (warns if any(abs(f - b) <= 2 for b in bounds) else errs).append((f, k, f"accel spike {(p - 2 * prev[k] + prev2[k]).length / dt ** 2:.0f}"))
+                    prev2[k] = prev.get(k, p); prev[k] = p
+                    if bn.startswith("DEF-foot") and p.z < -LIM["floor_tol"]:
+                        errs.append((f, k, f"below floor z={p.z:.3f}"))
+                    if bn == "DEF-head":
+                        c = world_to_camera_view(sc, cam, p)
+                        vis = vis or (0.02 <= c.x <= 0.98 and 0.02 <= c.y <= 0.98 and c.z > 0)
+            if not vis:
+                errs.append((f, "char", "no character head visible in frame"))
+            continue
         for k, o in J.items():
             p = o.matrix_world.translation.copy(); r = o.matrix_world.to_quaternion()
             if any(math.isnan(v) for v in (*p, *r)):
@@ -66,7 +91,7 @@ def main():
     summ = collections.defaultdict(list)
     for fr, name, msg in errs:
         summ[name.split(".")[0].rstrip("0123456789") + ": " + msg.split()[0] + " " + (msg.split()[1] if msg.split()[0] in ("rot", "accel", "too", "out", "below") else "")].append(fr)
-    rep = {"scene": a.scene, "frames": sc.frame_end, "errors": len(errs),
+    rep = {"scene": a.scene, "frames": sc.frame_end, "errors": len(errs), "warnings_clip_cuts": len(warns),
            "by_kind": {k: f"{len(v)} frames, {min(v)}..{max(v)}" for k, v in summ.items()},
            "first": [list(e) for e in errs[:20]]}
     json.dump(rep, open(a.report, "w"), indent=1)
