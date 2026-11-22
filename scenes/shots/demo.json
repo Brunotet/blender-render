@@ -1,0 +1,17 @@
+{
+  "fps": 24,
+  "characters": [
+    {"id": "a", "pos": [0, 0, 0], "rot_z": 0},
+    {"id": "b", "pos": [2.2, 0.5, 0], "rot_z": -25, "color": [0.2, 0.55, 0.9]}
+  ],
+  "shots": [
+    {"dur": 3, "camera": {"target": {"char": "a"}, "from": {"az": -25, "dist": 7, "h": 1.6}, "to": {"az": 10, "dist": 6, "h": 1.5}},
+     "actions": [{"char": "a", "clip": "Idle_Talking_Loop"}, {"char": "b", "clip": "Dance_Loop"}]},
+    {"dur": 3, "camera": {"target": {"char": "a", "bone": "DEF-head"}, "from": {"az": 0, "dist": 5, "h": 1.7, "lens": 38}, "to": {"az": 0, "dist": 1.6, "h": 1.7, "lens": 60}},
+     "actions": [{"char": "a", "clip": "Idle_Talking_Loop"}, {"char": "b", "clip": "Dance_Loop"}]},
+    {"dur": 4, "camera": {"target": {"char": "a"}, "from": {"az": 55, "dist": 7, "h": 1.4}, "to": {"az": 15, "dist": 7, "h": 1.4}},
+     "actions": [{"char": "a", "clip": "Walk_Loop", "move": {"to": [-3, 1.5]}}, {"char": "b", "clip": "Sprint_Loop", "move": {"to": [4, -1]}}]},
+    {"dur": 3, "camera": {"target": {"char": "a"}, "from": {"az": 0, "dist": 8, "h": 1.2}, "to": {"az": -20, "dist": 6, "h": 1.0}},
+     "actions": [{"char": "a", "clip": "Jump_Loop"}, {"char": "b", "clip": "Roll"}]}
+  ]
+}
