@@ -1,8 +1,61 @@
 {
-  "policy": "Monetized channel: only assets that need NO attribution. Allowed licenses: CC0-1.0, Unlicense, Public-Domain, Original (made in this repo).",
-  "allowed": ["CC0-1.0", "Unlicense", "Public-Domain", "Original"],
-  "assets": [
-    {"path": "scenes/parkour.py", "license": "Original", "source": "written for this repo"},
-    {"path": "scenes/demo.py", "license": "Original", "source": "written for this repo"}
-  ]
+ "policy": "Monetized channel: only assets that need NO attribution. Allowed licenses: CC0-1.0, Unlicense, Public-Domain, Original (made in this repo).",
+ "allowed": [
+  "CC0-1.0",
+  "Unlicense",
+  "Public-Domain",
+  "Original"
+ ],
+ "assets": [
+  {
+   "path": "scenes/parkour.py",
+   "license": "Original",
+   "source": "written for this repo"
+  },
+  {
+   "path": "scenes/demo.py",
+   "license": "Original",
+   "source": "written for this repo"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/Godot/AnimationLibrary_Godot_Standard.glb",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/License.txt",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/Preview.png",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/Unity/AnimationLibrary_Unity_Standard.fbx",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/Unity_Setup.png",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/Unreal Engine/AL_Standard.fbx",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/Animation Library[Standard]/UnrealEngine_Setup.png",
+   "license": "CC0-1.0",
+   "source": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  {
+   "path": "assets/ual/MANIFEST.txt",
+   "license": "Original",
+   "source": "generated"
+  }
+ ]
 }

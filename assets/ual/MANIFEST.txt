@@ -1,0 +1,11 @@
+source: https://quaternius.com/packs/universalanimationlibrary.html
+license: CC0-1.0
+url: https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip
+
+20623420 ./Animation
+237945 ./Animation
+2424027 ./Animation
+24856556 ./Animation
+347727 ./Animation
+446 ./Animation
+6671104 ./Animation
