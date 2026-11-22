@@ -3,10 +3,11 @@ name: render
 on:
   workflow_dispatch:
     inputs:
-      scene:        { description: "Scene script",              default: "scenes/demo.py" }
-      total_frames: { description: "Total frames at full fps",  default: "240" }
+      scene:        { description: "Scene script",              default: "scenes/director.py" }
+      shots:        { description: "Shot list JSON (director)",  default: "scenes/shots/demo.json" }
+      total_frames: { description: "Total frames at full fps",  default: "312" }
       jobs:         { description: "Parallel jobs (max 20)",    default: "20" }
-      step:         { description: "Render every Nth frame",    default: "2" }
+      step:         { description: "Render every Nth frame",    default: "1" }
       fps:          { description: "Output fps",                default: "24" }
       width:        { description: "Width",                     default: "1280" }
       height:       { description: "Height",                    default: "720" }
@@ -51,6 +52,8 @@ jobs:
       - name: License check
         run: python check_licenses.py
       - name: Quality gate (hard-fails the whole run)
+        env:
+          SHOTS: ${{ inputs.shots }}
         run: python qa.py --scene "${{ inputs.scene }}" --fps ${{ inputs.fps }}
 
   render:
@@ -69,6 +72,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Render frames
+        env:
+          SHOTS: ${{ inputs.shots }}
         run: >
           python render.py
           --scene "${{ inputs.scene }}"
