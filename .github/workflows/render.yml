@@ -99,6 +99,8 @@ jobs:
   stitch:
     needs: [plan, render]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -120,3 +122,9 @@ jobs:
           name: final-video
           path: final.mp4
           if-no-files-found: error
+      - name: Publish as release asset (downloadable without login)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "video-${{ github.run_number }}" final.mp4 --repo "${{ github.repository }}" \
+            --title "Render #${{ github.run_number }} (${{ inputs.shots }})" --notes "scene=${{ inputs.scene }} shots=${{ inputs.shots }} frames=${{ inputs.total_frames }} ${{ inputs.width }}x${{ inputs.height }} samples=${{ inputs.samples }}"
