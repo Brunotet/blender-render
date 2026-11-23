@@ -1,41 +1,18 @@
-"""Director: builds a Blender scene from a JSON shot list using the CC0 Quaternius mannequin + clip library.
-
-Pick the shot list with env SHOTS (default scenes/shots/demo.json). Anything not understood HARD-FAILS with a
-message; unknown clips are never substituted silently.
-
-Shot list format (all times in seconds):
-{
-  "fps": 24,
-  "characters": [{"id": "a", "pos": [0,0,0], "rot_z": 0, "color": [0.9,0.5,0.1]}],
-  "shots": [{
-     "dur": 4,
-     "camera": {"target": {"char": "a", "bone": "DEF-head", "offset": [0,0,0]},   # or {"point": [x,y,z]}
-                "from": {"az": -20, "dist": 6, "h": 1.5, "lens": 38},               # az in degrees, 0 = in front
-                "to":   {"az": 20,  "dist": 6, "h": 1.5, "lens": 38}},
-     "actions": [{"char": "a", "clip": "Dance_Loop", "at": 0, "dur": 4, "loop": true, "speed": 1,
-                  "move": {"to": [2, 0], "face": true}}]
-  }]
-}
-"""
-import difflib, json, math, os
+import difflib, json, math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GLB = os.path.join(HERE, "..", "assets", "ual", "Animation Library[Standard]", "Godot", "AnimationLibrary_Godot_Standard.glb")
 DEFAULT_SHOTS = os.path.join(HERE, "shots", "demo.json")
 
-
 def clamp(x, a=0.0, b=1.0):
     return a if x < a else b if x > b else x
-
 
 def smooth(x):
     x = clamp(x)
     return x * x * (3 - 2 * x)
 
-
 def lerp(a, b, k):
     return a + (b - a) * k
-
 
 def load_spec():
     path = os.environ.get("SHOTS", DEFAULT_SHOTS)
@@ -43,7 +20,6 @@ def load_spec():
         path = os.path.join(HERE, "..", path)
     with open(path) as f:
         return json.load(f), path
-
 
 def validate(spec, clips):
     errs = []
@@ -57,7 +33,15 @@ def validate(spec, clips):
             errs.append(f"shot {i}: dur must be 0.2..120 s")
         cam = sh.get("camera", {})
         tg = cam.get("target", {})
-        if tg.get("char") not in ids and "point" not in tg:
+        if "organ" in tg:
+            if not next((c for c in spec.get("characters", []) if c.get("id") == tg.get("char") and c.get("anatomy")), None):
+                errs.append(f"shot {i}: organ target needs a character with \"anatomy\": true")
+            else:
+                try:
+                    from anatomy import resolve; resolve([tg["organ"]])
+                except ValueError as e:
+                    errs.append(f"shot {i}: {e}")
+        elif tg.get("char") not in ids and "point" not in tg:
             errs.append(f"shot {i}: camera.target needs a valid char or point")
         for a in sh.get("actions", []):
             if a.get("char") not in ids:
@@ -70,10 +54,8 @@ def validate(spec, clips):
     if errs:
         raise ValueError("Shot list rejected:\n  " + "\n  ".join(errs))
 
-
 def total_seconds(spec):
     return sum(s["dur"] for s in spec["shots"])
-
 
 def build(bpy, fps):
     import mathutils
@@ -87,7 +69,6 @@ def build(bpy, fps):
     if not os.path.exists(GLB):
         raise FileNotFoundError(f"character pack missing: {GLB}")
 
-    # ---- characters -------------------------------------------------------------------------
     chars, clip_actions = {}, None
     for n, c in enumerate(spec["characters"]):
         before = set(bpy.data.objects)
@@ -106,7 +87,7 @@ def build(bpy, fps):
                 bpy.data.actions.remove(a)
         arm.animation_data_create()
         arm.animation_data.action = None
-        for t_ in list(arm.animation_data.nla_tracks):      # glTF import adds one NLA track per clip: remove them all
+        for t_ in list(arm.animation_data.nla_tracks):
             arm.animation_data.nla_tracks.remove(t_)
         root = bpy.data.objects.new(f"char_{c['id']}", None)
         sc.collection.objects.link(root)
@@ -120,15 +101,25 @@ def build(bpy, fps):
                 if nd.type == "BSDF_PRINCIPLED":
                     nd.inputs["Base Color"].default_value = tuple(c["color"]) + (1,)
             mesh.active_material = mat
-        chars[c["id"]] = dict(root=root, arm=arm, cfg=c)
+        chars[c["id"]] = dict(root=root, arm=arm, mesh=mesh, cfg=c)
+    sys.path.insert(0, HERE)
+    import anatomy
+    for cid, ch in chars.items():
+        if ch["cfg"].get("anatomy"):
+            ms = ch["mesh"]
+            ch["xr"] = []
+            for si, m0_ in enumerate(ms.data.materials):
+                m2 = m0_.copy(); ms.data.materials[si] = m2
+                anatomy.make_body_xray(bpy, m2)
+                ch["xr"].append(m2.node_tree.nodes["XR"])
+            ch["organs"] = anatomy.build_anatomy(bpy, ch["arm"], f"{cid}")
     clips = sorted(k for k in clip_actions if k != "A_TPose")
     validate(spec, clips)
 
     n_frames = int(round(total_seconds(spec) * fps))
     sc.frame_start, sc.frame_end = 1, n_frames
 
-    # ---- NLA strips (clips) -------------------------------------------------------------------
-    for cid, ch in chars.items():                       # base idle for the whole timeline
+    for cid, ch in chars.items():
         ad = ch["arm"].animation_data
         idle = clip_actions["Idle_Loop"]
         tr = ad.nla_tracks.new()
@@ -139,7 +130,7 @@ def build(bpy, fps):
         st.extrapolation = "HOLD"
     t0 = 0.0
     bounds = set()
-    moves = {cid: [] for cid in chars}                  # (t_start, t_end, from_xy, to_xy, face)
+    moves = {cid: [] for cid in chars}
     for sh in spec["shots"]:
         for a in sh.get("actions", []):
             ch = chars[a["char"]]
@@ -154,7 +145,7 @@ def build(bpy, fps):
             st.scale = 1.0 / a.get("speed", 1.0)
             loop = a.get("loop", a["clip"].endswith("_Loop"))
             st.repeat = max(1.0, dur_f / ln) if loop else 1.0
-            st.blend_in, st.blend_out = 0, 0   # NLA blend pops a leg 0.8-1.7 m on this rig (see TODO crossfade): hard cuts
+            st.blend_in, st.blend_out = 0, 0
             bounds.add(start_f); bounds.add(start_f + dur_f)
             st.extrapolation = "NOTHING"
             if "move" in a:
@@ -163,7 +154,6 @@ def build(bpy, fps):
 
     sc["clip_boundaries"] = sorted(bounds)
 
-    # ---- stage ----------------------------------------------------------------------------------
     def mat(name, color, rough=0.8):
         m = bpy.data.materials.new(name)
         m.use_nodes = True
@@ -191,13 +181,11 @@ def build(bpy, fps):
     sc.render.use_motion_blur = True
     sc.render.motion_blur_shutter = 0.5
 
-    # ---- character root motion (keyframed empties) ---------------------------------------------
     for cid, ch in chars.items():
         cfg = ch["cfg"]
         px, py, pz = cfg.get("pos", [0, 0, 0])
         yaw = math.radians(cfg.get("rot_z", 0))
         segs = moves[cid]
-        # build position/yaw as piecewise function
         pts = [(0.0, px, py, yaw)]
         for (ta, tb, mv) in segs:
             _, x0, y0, yw0 = pts[-1]
@@ -209,7 +197,7 @@ def build(bpy, fps):
             while yw1 - yw0 > math.pi: yw1 -= 2 * math.pi
             while yw1 - yw0 < -math.pi: yw1 += 2 * math.pi
             turn = min(0.4, 0.3 * (tb - ta)) if abs(yw1 - yw0) > 0.05 else 0.0
-            pts.append((ta + turn + 1e-6, x0, y0, yw1))      # ease the turn, then travel
+            pts.append((ta + turn + 1e-6, x0, y0, yw1))
             pts.append((tb, tx, ty, yw1))
         for f in range(1, n_frames + 1):
             t = (f - 1) / fps
@@ -226,12 +214,44 @@ def build(bpy, fps):
             ch["root"].keyframe_insert("location", frame=f)
             ch["root"].keyframe_insert("rotation_euler", frame=f)
 
-    # ---- cameras: one per shot, switched with markers --------------------------------------------
+    t_ = 0.0
+    for sh in spec["shots"]:
+        fa = 1 + int(round(t_ * fps)); fb = min(n_frames, int(round((t_ + sh["dur"]) * fps)))
+        t_ += sh["dur"]
+        for cid, ch in chars.items():
+            if "organs" not in ch:
+                continue
+            xs = sh.get("xray", {}).get(cid, sh.get("xray", {})) if sh.get("xray") else {}
+            body = xs.get("body", [1.0, 1.0]); body = body if isinstance(body, list) else [body, body]
+            show = set(anatomy.resolve(xs.get("show", []))); hl = set(anatomy.resolve(xs.get("highlight", [])))
+            show |= hl
+            dim = xs.get("dim", 0.35)
+            for name, objs in ch["organs"].items():
+                m0 = objs[0].active_material
+                vis = name in show
+                for o in objs:
+                    o.hide_render = not vis; o.keyframe_insert("hide_render", frame=fa); o.keyframe_insert("hide_render", frame=fb)
+                nt = m0.node_tree
+                gl = 1.0 if name in hl else 0.0
+                dv = 1.0 if (name in hl or not hl) else dim
+                for f in (fa, fb):
+                    nt.nodes["DIM"].outputs[0].default_value = dv
+                    nt.nodes["DIM"].outputs[0].keyframe_insert("default_value", frame=f)
+                    nt.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = gl
+                    nt.nodes["Principled BSDF"].inputs["Emission Strength"].keyframe_insert("default_value", frame=f)
+            for f, bv in ((fa, body[0]), (fb, body[1])):
+                for xn in ch["xr"]:
+                    xn.outputs[0].default_value = bv
+                    xn.outputs[0].keyframe_insert("default_value", frame=f)
+
     def target_pos(tg):
         if "point" in tg:
             return mathutils.Vector(tg["point"])
         ch = chars[tg["char"]]
         off = mathutils.Vector(tg.get("offset", [0, 0, 0]))
+        if "organ" in tg:
+            objs = [o for n_ in anatomy.resolve([tg["organ"]]) for o in ch["organs"][n_]]
+            return sum((o.matrix_world.translation for o in objs), mathutils.Vector()) / len(objs) + off
         if "bone" in tg:
             pb = ch["arm"].pose.bones[tg["bone"]]
             return ch["arm"].matrix_world @ pb.head + off
