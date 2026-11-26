@@ -25,12 +25,12 @@ jobs:
       - name: Build kernel
         run: |
           set -e
-          SLUG="br-$JOB"
+          SLUG="br-${JOB//_/-}"
           mkdir k
           python3 - <<'PY'
           import json, os
           e = os.environ
-          json.dump({"id": e["KUSER"] + "/br-" + e["JOB"], "title": "br-" + e["JOB"], "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True, "enable_gpu": True, "enable_internet": True}, open("k/kernel-metadata.json", "w"))
+          json.dump({"id": e["KUSER"] + "/br-" + e["JOB"].replace("_", "-"), "title": "br-" + e["JOB"].replace("_", "-"), "code_file": "kernel.py", "language": "python", "kernel_type": "script", "is_private": True, "enable_gpu": True, "enable_internet": True}, open("k/kernel-metadata.json", "w"))
           spec = {"job": e["JOB"], "args": json.loads(e["JARGS"]), "max_minutes": float(e["MAXM"]), "repo": "https://github.com/" + e["REPO"], "sha": e["SHA"]}
           s = open("gpu/runner.py").read()
           open("k/kernel.py", "w").write("JOB_SPEC = r'''" + json.dumps(spec) + "'''\n" + s)
