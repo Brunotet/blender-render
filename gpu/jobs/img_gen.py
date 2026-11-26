@@ -8,7 +8,7 @@ import subprocess, sys
 subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "diffusers", "transformers", "accelerate", "sentencepiece", "protobuf"])
 print("pip done", time.time() - t0, flush=True)
 from diffusers import FluxPipeline
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dtype=torch.float16, device_map="balanced")
+pipe = FluxPipeline.from_pretrained(args.get("model", "YuCollection/FLUX.1-schnell-Diffusers"), torch_dtype=torch.float16, device_map="balanced")
 print("loaded", time.time() - t0, flush=True)
 for i, p in enumerate(prompts):
     img = pipe(p, num_inference_steps=4, guidance_scale=0.0, height=size, width=size, max_sequence_length=256).images[0]
