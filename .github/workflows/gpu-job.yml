@@ -55,6 +55,16 @@ jobs:
           ls -laR kout
           for f in $(find kout -name '*.json' -o -name '*.log'); do echo "== $f"; head -c 6000 $f; echo; done
           test -f kout/DONE.ok || { echo "no DONE.ok marker"; tail -80 kout/*.log; exit 1; }
+      - name: Publish outputs as release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="gpu-$JOB-${{ github.run_number }}"
+          files=$(find kout/out -type f)
+          test -n "$files" || { echo "no output files"; exit 1; }
+          gh release create "$tag" --title "$tag" --notes "gpu job output" $files
+          echo "RELEASE $tag"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
