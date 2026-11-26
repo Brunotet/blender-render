@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 120
     env:
       KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-      KUSER: simoncreaty
+      KUSER: tingke
       JOB: ${{ inputs.job }}
       JARGS: ${{ inputs.args }}
       MAXM: ${{ inputs.max_minutes }}
@@ -45,6 +45,7 @@ jobs:
             s=$(kaggle kernels status $KUSER/$SLUG 2>&1 | tail -1); echo "$s"
             case "$s" in
               *COMPLETE*) ok=1; break;;
+              *Cannot\ access*|*denied*) echo "STATUS DENIED - wrong owner or token scope"; exit 1;;
               *ERROR*|*CANCEL*) echo "KERNEL FAILED"; mkdir -p kout; kaggle kernels output $KUSER/$SLUG -p kout || true; ls -la kout; tail -80 kout/*.log 2>/dev/null; exit 1;;
             esac
             sleep 20
