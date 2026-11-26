@@ -53,6 +53,7 @@ jobs:
           test $ok = 1 || { echo "poll timeout"; exit 1; }
           mkdir -p kout; kaggle kernels output $KUSER/$SLUG -p kout
           ls -laR kout
+          for f in $(find kout -name '*.json' -o -name '*.log'); do echo "== $f"; head -c 6000 $f; echo; done
           test -f kout/DONE.ok || { echo "no DONE.ok marker"; tail -80 kout/*.log; exit 1; }
       - uses: actions/upload-artifact@v4
         if: always()
