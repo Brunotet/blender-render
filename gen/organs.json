@@ -1,0 +1,6 @@
+{"repo": "Brunotet/blender-render",
+ "provenance": "FLUX.1-schnell (Apache-2.0) -> rembg isnet-general-use (Apache-2.0) -> TripoSR (MIT); outputs need no attribution",
+ "organs": {
+  "heart": {"release": "gpu-asset3d-9", "file": "asset_0.glb"},
+  "brain": {"release": "gpu-asset3d-9", "file": "asset_1.glb"}
+ }}
