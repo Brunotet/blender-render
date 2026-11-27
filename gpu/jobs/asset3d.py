@@ -2,6 +2,7 @@ import os, sys, json, subprocess, time, glob, traceback, shutil
 
 OUT = os.environ.get("OUT_DIR", "/kaggle/working/out")
 os.makedirs(OUT, exist_ok=True)
+os.makedirs("/tmp/k", exist_ok=True)
 A = json.loads(os.environ.get("JOB_ARGS", "{}"))
 PROMPTS = A.get("prompts") or []
 if not PROMPTS:
@@ -9,8 +10,8 @@ if not PROMPTS:
 SUFFIX = A.get("suffix", ", single object, centered, plain white background, studio lighting, high detail, 3d render")
 MODEL = A.get("model", "YuCollection/FLUX.1-schnell-Diffusers")
 BACKENDS = A.get("backends", ["trellis", "triposr"])
-W = "/kaggle/working/w"
-V = "/kaggle/working/v310"
+W = "/tmp/k/w"
+V = "/tmp/k/v310"
 VPY = V + "/bin/python"
 os.makedirs(W, exist_ok=True)
 LOG = open(OUT + "/asset3d.log", "a")
@@ -63,7 +64,7 @@ T = r'''
 import os, sys, glob, json, traceback
 os.environ["SPCONV_ALGO"] = "native"
 os.environ["ATTN_BACKEND"] = "xformers"
-sys.path.insert(0, "/kaggle/working/TRELLIS")
+sys.path.insert(0, "/tmp/k/TRELLIS")
 from PIL import Image
 from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import postprocessing_utils
@@ -86,7 +87,7 @@ json.dump(done, open("W/trellis_done.json", "w"))
 TS = r'''
 import os, sys, json, traceback, types
 import numpy as np, torch
-sys.path.insert(0, "/kaggle/working/TripoSR")
+sys.path.insert(0, "/tmp/k/TripoSR")
 from skimage import measure
 m = types.ModuleType("torchmcubes")
 def marching_cubes(vol, thr):
@@ -134,22 +135,22 @@ def make_venv():
 def trellis_setup():
     make_venv()
     ip = "uv pip install -q --python " + VPY + " "
-    if not os.path.isdir("/kaggle/working/TRELLIS"):
-        sh("git clone --recurse-submodules https://github.com/microsoft/TRELLIS /kaggle/working/TRELLIS")
+    if not os.path.isdir("/tmp/k/TRELLIS"):
+        sh("git clone --recurse-submodules https://github.com/microsoft/TRELLIS /tmp/k/TRELLIS")
     sh(ip + "xformers==0.0.27.post2 --no-deps --index-url https://download.pytorch.org/whl/cu121")
     sh(ip + "spconv-cu120")
     sh(ip + "git+https://github.com/EasternJournalist/utils3d.git" + chr(64) + "9a4eb15e4021b67b12c460c7057d642626897ec8")
     log("nvcc:", shutil.which("nvcc"), os.path.exists("/usr/local/cuda"))
-    if not os.path.isdir("/kaggle/working/nvdiffrast"):
-        sh("git clone https://github.com/NVlabs/nvdiffrast /kaggle/working/nvdiffrast")
+    if not os.path.isdir("/tmp/k/nvdiffrast"):
+        sh("git clone https://github.com/NVlabs/nvdiffrast /tmp/k/nvdiffrast")
     env = dict(os.environ, TORCH_CUDA_ARCH_LIST="7.5", CUDA_HOME=os.environ.get("CUDA_HOME", "/usr/local/cuda"))
-    sh(ip + "--no-build-isolation /kaggle/working/nvdiffrast", env=env)
+    sh(ip + "--no-build-isolation /tmp/k/nvdiffrast", env=env)
 
 
 def triposr_setup():
     make_venv()
-    if not os.path.isdir("/kaggle/working/TripoSR"):
-        sh("git clone https://github.com/VAST-AI-Research/TripoSR /kaggle/working/TripoSR")
+    if not os.path.isdir("/tmp/k/TripoSR"):
+        sh("git clone https://github.com/VAST-AI-Research/TripoSR /tmp/k/TripoSR")
 
 
 def run_backend(name, files):
