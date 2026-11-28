@@ -49,6 +49,8 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Fetch generated organs
+        run: python fetch_gen.py
       - name: License check
         run: python check_licenses.py
       - name: Quality gate (hard-fails the whole run)
@@ -71,6 +73,8 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Fetch generated organs
+        run: python fetch_gen.py
       - name: Render frames
         env:
           SHOTS: ${{ inputs.shots }}
