@@ -103,7 +103,8 @@ def build(bpy, fps):
             mesh.active_material = mat
         chars[c["id"]] = dict(root=root, arm=arm, mesh=mesh, cfg=c)
     sys.path.insert(0, HERE)
-    import anatomy
+    import anatomy, anatomy_gen
+    anatomy_gen.apply(anatomy)
     for cid, ch in chars.items():
         if ch["cfg"].get("anatomy"):
             ms = ch["mesh"]
