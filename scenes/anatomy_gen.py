@@ -54,11 +54,13 @@ def glb_builder(path, protos, rot):
         glo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
         ghi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
         k = max((hi - lo)) / max(ghi - glo)
+        print('[gen]', os.path.basename(path), 'target', tuple(lo), tuple(hi), 'glb', tuple(glo), tuple(ghi), 'k', k, flush=True)
         ctr_g, ctr_t = (glo + ghi) / 2, (lo + hi) / 2
         me.transform(Matrix.Translation(ctr_t) @ Matrix.Scale(k, 4) @ Matrix.Translation(-ctr_g))
         for p in me.polygons:
             p.use_smooth = True
         o.name = os.path.basename(path)
+        print('[gen] fitted', o.name, len(me.vertices), tuple(o.location), tuple(o.rotation_euler), tuple(o.scale), flush=True)
         return [o]
     return build
 
